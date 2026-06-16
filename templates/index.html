@@ -1,0 +1,110 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Medical Knowledge Assistant</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f0f4f8; color: #333; }
+    .container { max-width: 800px; margin: 40px auto; padding: 20px; }
+    h1 { text-align: center; color: #2c7a5c; margin-bottom: 8px; }
+    .subtitle { text-align: center; color: #666; font-size: 14px; margin-bottom: 30px; }
+
+    .card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .card h2 { font-size: 16px; color: #2c7a5c; margin-bottom: 12px; }
+
+    input[type="file"] { display: block; margin-bottom: 10px; font-size: 14px; }
+    button { background: #2c7a5c; color: white; border: none; padding: 10px 22px;
+             border-radius: 8px; cursor: pointer; font-size: 14px; }
+    button:hover { background: #235f48; }
+    #upload-status { margin-top: 10px; font-size: 14px; color: #2c7a5c; }
+
+    #chat-box { height: 320px; overflow-y: auto; border: 1px solid #ddd;
+                border-radius: 8px; padding: 14px; margin-bottom: 12px;
+                background: #f9fbfa; font-size: 14px; line-height: 1.6; }
+    .msg-user { text-align: right; margin-bottom: 10px; }
+    .msg-user span { background: #2c7a5c; color: white; padding: 8px 14px;
+                     border-radius: 18px 18px 4px 18px; display: inline-block;
+                     max-width: 75%; }
+    .msg-bot { margin-bottom: 12px; }
+    .msg-bot span { background: #e8f5ef; color: #1a3d2e; padding: 8px 14px;
+                    border-radius: 4px 18px 18px 18px; display: inline-block;
+                    max-width: 85%; }
+
+    .input-row { display: flex; gap: 10px; }
+    #question { flex: 1; padding: 10px 14px; border: 1px solid #ccc;
+                border-radius: 8px; font-size: 14px; }
+    .note { font-size: 12px; color: #888; margin-top: 10px; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>🏥 Medical Knowledge Assistant</h1>
+  <p class="subtitle">Upload medical PDFs and ask questions from them</p>
+
+  <div class="card">
+    <h2>📄 Upload Medical Document</h2>
+    <input type="file" id="pdf-file" accept=".pdf" />
+    <button onclick="uploadFile()">Upload & Process</button>
+    <div id="upload-status"></div>
+  </div>
+
+  <div class="card">
+    <h2>💬 Ask a Question</h2>
+    <div id="chat-box"></div>
+    <div class="input-row">
+      <input type="text" id="question" placeholder="e.g. What are symptoms of diabetes?" />
+      <button onclick="askQuestion()">Ask</button>
+    </div>
+    <p class="note">This assistant only answers from uploaded documents. Not a diagnostic tool.</p>
+  </div>
+</div>
+
+<script>
+async function uploadFile() {
+  const fileInput = document.getElementById("pdf-file");
+  const status = document.getElementById("upload-status");
+  if (!fileInput.files[0]) {
+    status.textContent = "Please select a PDF file first.";
+    return;
+  }
+  status.textContent = "Uploading and processing...";
+  const formData = new FormData();
+  formData.append("file", fileInput.files[0]);
+
+  const res = await fetch("/upload", { method: "POST", body: formData });
+  const data = await res.json();
+  status.textContent = data.message || data.error;
+}
+
+async function askQuestion() {
+  const input = document.getElementById("question");
+  const chatBox = document.getElementById("chat-box");
+  const question = input.value.trim();
+  if (!question) return;
+
+  chatBox.innerHTML += `<div class="msg-user"><span>${question}</span></div>`;
+  input.value = "";
+  chatBox.scrollTop = chatBox.scrollHeight;
+
+  const res = await fetch("/ask", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ question })
+  });
+  const data = await res.json();
+  const answer = data.answer || data.error;
+
+  chatBox.innerHTML += `<div class="msg-bot"><span>${answer}</span></div>`;
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+document.getElementById("question").addEventListener("keydown", function(e) {
+  if (e.key === "Enter") askQuestion();
+});
+</script>
+</body>
+</html>
